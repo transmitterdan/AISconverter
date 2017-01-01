@@ -13,10 +13,11 @@ Convert data in a text file to NMEA AIS data usable by OpenCPN
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-USAGE:
-    [python] ImportMarineTraffic.py InputFile IP_Address Port# [Sleep time [TCP]]
+USAGE: python AISconverter.py InputFile --dest=IP_Address --port=Port# [--sleep=Sleep time [--TCP | --UDP]]
     
     Sleep time is the delay in seconds between AIS messages sent.
+    
+    IP_Address is IP of destination for UDP mode. Default is 'localhost'
     
     Sleep time defaults to 0.1 seconds
     
