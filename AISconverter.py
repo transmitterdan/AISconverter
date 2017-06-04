@@ -38,7 +38,6 @@ import string
 import getopt
 
 # default argument values
-dest = None
 port = 10110    # Default port
 td = 0.1        # Default time between sent messages is 100mS
 mode = "UDP"    # Default mode is UDP
@@ -391,11 +390,7 @@ def usage():
     print("If InputFile is not supplied then take input from STDIN.")
     return
 
-options, remainder = getopt.gnu_getopt(sys.argv[1:], 'd:p:s:ut', ['dest=',
-                                                                  'port=',
-                                                                  'sleep=',
-                                                                  'UDP',
-                                                                  'TCP'])
+options, remainder = getopt.gnu_getopt(sys.argv[1:], 'hd:p:s:ut', ['help','dest=','port=','sleep=','UDP','TCP'])
 
 for opt, arg in options:
     if opt in ('-d', '--dest'):
@@ -408,6 +403,9 @@ for opt, arg in options:
         mode = 'UDP'
     elif opt in ('-t', '--TCP'):
         mode = 'TCP'
+    elif opt in ('-h', '--help'):
+        usage()
+        sys.exit()
 
 if remainder:
     file = open(remainder[0],'r')
