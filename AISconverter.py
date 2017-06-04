@@ -368,7 +368,7 @@ def tcp(TCP_IP, TCP_PORT, f, delay):
 
         except EOFError:
             f.close()
-            sock.close()
+            lsock.close()
             return True
 
         except Exception as e:
@@ -381,13 +381,20 @@ def tcp(TCP_IP, TCP_PORT, f, delay):
             return False
 
 def usage():
-    print("USAGE:")
-    print("python AISconverter.py InputFile --dest=IP_Address --port=Port# [-s Sleep time] [--TCP]")
-    print("Sleep time is the delay in seconds between AIS messages sent.")
-    print("Sleep time defaults to 0.1 seconds")
-    print("If three letter string after sleep time is TCP then TCP/IP packets are sent")
-    print("else default UDP packets are sent.")
-    print("If InputFile is not supplied then take input from STDIN.")
+    print("Usage: python AISconverter.py [OPTION]... [FILE]...")
+    print("Convert plain text in FILE to NMEA AIS format data and send out via IP address/port.")
+    print("")
+    print("-d, -dest=IP_Address        destination IP address.")
+    print("-h, --help                  this message.")
+    print("-p, --port=#                destination port number.")
+    print("                            Any valid port is accepted.")
+    print("-s, --sleep=#.#             sleep time between packets.")
+    print("                            default is 0.1 seconds.")
+    print("-t, --TCP                   create TCP connection.")
+    print("-u, --UDP                   use connectionless UDP.")
+    print("                            UDP is default if no connection type specified.")
+    print("")
+    print("If no FILE is given then default is to read input text from STDIN.")
     return
 
 options, remainder = getopt.gnu_getopt(sys.argv[1:], 'hd:p:s:ut', ['help','dest=','port=','sleep=','UDP','TCP'])
