@@ -11,17 +11,23 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#	Usage: Create a text data file containing key AIS data.  Presently the program
-#	only accepts 3 types of AIS messages (1, 18 & 24).  Message type 1 is for
+#   Credits:
+#   https://gpsd.gitlab.io/gpsd/NMEA.html
+#   https://gpsd.gitlab.io/gpsd/AIVDM.html
+#   https://opencpn.org
+
+#   Usage: Create a text data file containing key AIS data.  Presently the program
+#   only accepts 4 types of AIS messages (1, 5, 18 & 24).  Message type 1 is for
 #	class A vessel position report.  For Type 1 we only indicate channel A.  Maybe
-#	later this will be changed to get the channel from the data file.  Type 18 is
-#	for class B vessel position report.  Type 24 is for class B vessel static
-#	information.  There are 2 subtypes of a type 24 message (A and B or 0 and 1).
-#	The first type is mainly for the vessel name.  The second type is for call
-#	sign and vessel type.  Both subtypes are currently supported.  See example file
-#	sample.txt for examples of each type of message.   For help just run the
-#	script as 'python AISconverter' without arguments.  It will print out a little
-#	usage help.  The most common example of arguments would be:
+#	later this will be changed to get the channel from the data file.  Type 5 is
+#   for class A vessel static data. Type 18 is for class B vessel position report.
+#   Type 24 is for class B vessel static information.  There are 2 subtypes of a
+#   type 24 message (A and B or 0 and 1). The first type is mainly for the vessel
+#   name.  The second type is for call sign and vessel type.  Both subtypes are
+#   currently supported.  See example file sample.txt for examples of each type
+#   of message.   For help just run the script as 'python AISconverter --help'.
+#   It will print out a little usage help.
+#   The most common example with arguments would be:
 #       python AISconverter.py sample.txt localhost 10110 .1 UDP
 #           sample.txt is the name of the data file to read
 #	        localhost is the IP address of the computer running the script
@@ -125,6 +131,7 @@ def NMEAencapsulate(BigString,sixes):
     return capsule
 
 def nmeaEncode(LineDict):
+    AISlist = []
     Ignore = {'"'}
     if LineDict["TYPE"] == "1":
         # This is a Class A position update message
@@ -172,7 +179,60 @@ def nmeaEncode(LineDict):
         BigString = BigString+RAIM
         BigString = BigString+CommStat
         capsule = NMEAencapsulate(BigString, 28)
-        aisnmea = 'AIVDM,1,1,,A,'+ capsule + ',O'
+        AISlist.append('AIVDM,1,1,,A,'+ capsule + ',O')
+
+    if LineDict["TYPE"] == "5":
+        # This is static and voyage related data
+        MessageID = Int2BString(5,6)
+        RepeatIndicator = Int2BString(Str2Int(LineDict["REPEAT"],Ignore),2)
+        Channel = LineDict["CHANNEL"]
+        mmsi = Int2BString(Str2Int(LineDict["MMSI"],Ignore),30)
+        AISversion = Int2BString(0,2)
+        ImoNumber = Int2BString(Str2Int(LineDict["IMO_NUMBER"],Ignore),30)
+        CallSign = Str2Six(LineDict["CALL_SIGN"],42)
+        VesselName = Str2Six(LineDict["SHIP_NAME"],120)
+        ShipType = Int2BString(Str2Int(LineDict["SHIP_TYPE"],Ignore),8)
+        ToBow = Int2BString(Str2Int(LineDict["TO_BOW"],Ignore),9)
+        ToStern = Int2BString(Str2Int(LineDict["TO_STERN"],Ignore),9)
+        ToPort = Int2BString(Str2Int(LineDict["TO_PORT"],Ignore),6)
+        ToStbd = Int2BString(Str2Int(LineDict["TO_STBD"],Ignore),6)
+        FixType = Int2BString(Str2Int(LineDict["FIX_TYPE"],Ignore),4)
+        ETAmonth = Int2BString(Str2Int(LineDict["ETA_MONTH"],Ignore),4)
+        ETAday = Int2BString(Str2Int(LineDict["ETA_DAY"],Ignore),5)
+        ETAhour = Int2BString(Str2Int(LineDict["ETA_HOUR"],Ignore),5)
+        ETAmin = Int2BString(Str2Int(LineDict["ETA_MINUTE"],Ignore),6)
+        Draft = Int2BString(Str2Int(LineDict["DRAUGHT"],Ignore),8)
+        Dest = Str2Six(LineDict["DEST"],120)
+        Dte = Int2BString(0,1)
+        Spare = Int2BString(0,1)
+        Pad = Int2BString(0,2)
+        BigString = MessageID
+        BigString = BigString+RepeatIndicator
+        BigString = BigString+mmsi
+        BigString = BigString+AISversion
+        BigString = BigString+ImoNumber
+        BigString = BigString+CallSign
+        BigString = BigString+VesselName
+        BigString = BigString+ShipType
+        BigString = BigString+ToBow
+        BigString = BigString+ToStern
+        BigString = BigString+ToPort
+        BigString = BigString+ToStbd
+        BigString = BigString+FixType
+        BigString = BigString+ETAmonth
+        BigString = BigString+ETAday
+        BigString = BigString+ETAhour
+        BigString = BigString+ETAmin
+        BigString = BigString+Draft
+        BigString = BigString+Dest
+        BigString = BigString+Dte
+        BigString = BigString+Spare+Pad
+
+        capsule = NMEAencapsulate(BigString[0:6*36],36)
+        AISlist.append('AIVDM,2,1,' + str(seq5.counter) + ',' + Channel + ',' + capsule + ',O')
+        capsule = NMEAencapsulate(BigString[216:],35)
+        AISlist.append('AIVDM,2,2,' + str(seq5.counter) + ',' + Channel + ',' + capsule + ',O')
+        seq5()
 
     if LineDict["TYPE"] == "18":
         # This is a Class B position update message
@@ -213,7 +273,7 @@ def nmeaEncode(LineDict):
         BigString = BigString+MMSI+Spare1+SOG+PosAccuracy+Longitude+Latitude+COG+Heading+TimeStamp+Spare2
         BigString = BigString+State
         capsule = NMEAencapsulate(BigString, 28)
-        aisnmea = 'AIVDM,1,1,,' + Channel +','+ capsule + ',O'
+        AISlist.append('AIVDM,1,1,,' + Channel +','+ capsule + ',O')
 
     if LineDict["TYPE"] == "24":
         # This is a Class B Static Data Report
@@ -238,13 +298,15 @@ def nmeaEncode(LineDict):
             BigString = MessageID+RepeatIndicator+MMSI+PartNumber+Type+VendorID+CallSign+Dim+Spare
             capsule = NMEAencapsulate(BigString, 28)
 
-        aisnmea = 'AIVDM,1,1,,' + Channel + ',' + capsule + ',O'
+        AISlist.append('AIVDM,1,1,,' + Channel + ',' + capsule + ',O')
 
-    checksum = 0
-    for chindex in range(0,len(aisnmea)):
-        checksum = checksum ^ ord(aisnmea[chindex])
-    aisnmea = '!' + aisnmea + '*' + '{:02X}'.format(checksum)
-    return aisnmea
+    for mess in range(0,len(AISlist)):
+        checksum = 0
+        for chindex in range(0,len(AISlist[mess])):
+            checksum = checksum ^ ord(AISlist[mess][chindex])
+        AISlist[mess] = '!' + AISlist[mess] + '*' + '{:02X}'.format(checksum)
+
+    return AISlist
 
 def parse_line(f):
 
@@ -278,13 +340,13 @@ def parse_line(f):
 
         if not(finish) & start:
             if Chars == '"':
-                finish = True;
+                finish = True
 
         if not(finish) & start:
             value = value + Chars
 
         if start & finish:
-            LineDict[key] = value;
+            LineDict[key] = value
             keyFound = False
             key = ""
     return LineDict
@@ -295,34 +357,30 @@ def udp(UDP_IP, UDP_PORT, f, delay):
     sock = socket.socket(socket.AF_INET, # Internet
                          socket.SOCK_DGRAM) # UDP
     print("Type Ctrl-C to exit...")
-    count = 0
     while True :
         try:
             LineDict = parse_line(f)
             if LineDict:
-                mess = nmeaEncode(LineDict)
-	        #    print(mess)
-                mess = mess.strip()
-                mess = mess + u"\r\n"
-                sock.sendto(mess.encode("utf-8"),(UDP_IP, UDP_PORT))
-                time.sleep(delay)
+                messageList = nmeaEncode(LineDict)
+                if len(messageList) > 0:
+                    for imess in range(0,len(messageList)):
+                        mess = messageList[imess].strip()
+                        mess = mess + u"\r\n"
+                        sock.sendto(mess.encode("utf-8"),(UDP_IP, UDP_PORT))
+                        time.sleep(delay)
+
         except KeyboardInterrupt:
             f.close()
             sock.close()
             return True
-
         except EOFError:
             f.close()
             sock.close()
             return True
-
-        except Exception as e:
-            exc_type, exc_obj, exc_tb = sys.exc_info()
-            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-            print(exc_type, fname, exc_tb.tb_lineno)
+        except Exception:
             f.close()
             sock.close()
-            return False
+            raise
 
 def tcp(TCP_IP, TCP_PORT, f, delay):
     if TCP_IP == None:
@@ -339,7 +397,7 @@ def tcp(TCP_IP, TCP_PORT, f, delay):
     try:
         lsock.bind(server_address)
         lsock.listen(1)
-        print(["Server is waiting up to " + repr(tcpConnectTimeout) + "S for a connection at:", server_address]);
+        print(["Server is waiting up to " + repr(tcpConnectTimeout) + "S for a connection at:", server_address])
         conn, addr = lsock.accept()
 
     except socket.error as msg:
@@ -347,18 +405,19 @@ def tcp(TCP_IP, TCP_PORT, f, delay):
         lsock.close()
         return False
 
-    print(['Connected via TCP to:', addr]);
+    print(['Connected via TCP to:', addr])
     print("Type Ctrl-C to exit...")
     while True:
         try:
             LineDict = parse_line(f)
             if LineDict:
-                mess = nmeaEncode(LineDict)
-        #        print(mess)
-                mess = mess.strip()
-                mess = mess + u"\r\n"
-                conn.send(mess.encode("utf-8"))
-                time.sleep(delay)
+                messageList = nmeaEncode(LineDict)
+	        #    print(mess)
+                for imess in range(0,messageList.count):
+                    mess = messageList[imess].strip()
+                    mess = mess + u"\r\n"
+                    conn.send(mess.encode("utf-8"))
+                    time.sleep(delay)
 
         except KeyboardInterrupt:
             f.close()
@@ -370,15 +429,11 @@ def tcp(TCP_IP, TCP_PORT, f, delay):
             f.close()
             lsock.close()
             return True
-
-        except Exception as e:
-            exc_type, exc_obj, exc_tb = sys.exc_info()
-            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-            print(exc_type, fname, exc_tb.tb_lineno)
+        except Exception:
             f.close()
             conn.close()
             lsock.close()
-            return False
+            raise
 
 def usage():
     print("Usage: python AISconverter.py [OPTION]... [FILE]...")
@@ -396,6 +451,14 @@ def usage():
     print("")
     print("If no FILE is given then default is to read input text from STDIN.")
     return
+
+def seq5():
+    seq5.counter+=1
+    if seq5.counter > 9:
+        seq5.counter = 0
+
+#  Execution begins...
+seq5.counter=0
 
 options, remainder = getopt.gnu_getopt(sys.argv[1:], 'hd:p:s:ut', ['help','dest=','port=','sleep=','UDP','TCP'])
 
