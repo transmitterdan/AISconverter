@@ -16,16 +16,24 @@
 #   https://gpsd.gitlab.io/gpsd/AIVDM.html
 #   https://opencpn.org
 
-#   Usage: Create a text data file containing key AIS data.  Presently the program
-#   only accepts 4 types of AIS messages (1, 5, 18 & 24).  Message type 1 is for
-#	class A vessel position report.  For Type 1 we only indicate channel A.  Maybe
-#	later this will be changed to get the channel from the data file.  Type 5 is
-#   for class A vessel static data. Type 18 is for class B vessel position report.
-#   Type 24 is for class B vessel static information.  There are 2 subtypes of a
-#   type 24 message (A and B or 0 and 1). The first type is mainly for the vessel
-#   name.  The second type is for call sign and vessel type.  Both subtypes are
-#   currently supported.  See example file sample.txt for examples of each type
-#   of message.   For help just run the script as 'python AISconverter --help'.
+#   Usage: Create a text data file containing key AIS data.  Presently
+#   the program only accepts 4 types of AIS messages (1, 5, 18 & 24).
+#
+#   Message type 1 is for class A vessel position report.
+#
+#   Type 5 is for class A vessel static data.
+#
+#   Type 18 is for class B vessel position report.
+#
+#   Type 24 is for class B vessel static information.
+#
+#   There are 2 subtypes of a type 24 message (A and B or 0 and 1). The first type
+#   is mainly for the vessel name.  The second type is for call sign and vessel type.
+#   Both subtypes are currently supported.
+
+#   See example file sample.txt for examples of each type
+#   of message. For command line syntax help just run the script as
+#   python AISconverter --help
 #   It will print out a little usage help.
 #   The most common example with arguments would be:
 #       python AISconverter.py sample.txt localhost 10110 .1 UDP
@@ -42,6 +50,7 @@ import os
 import time
 import string
 import getopt
+import datetime as dt
 
 # default argument values
 port = 10110    # Default port
@@ -113,7 +122,16 @@ def BString2Int(bitlist):  # convert reversed bit string to int
 
     return value
 
+def Parse(Dictionary, Key, Default):
+    if Key.lower() in Dictionary:
+        Res = Dictionary[Key.lower()]
+    else:
+        Res = Default
+
+    return Res
+
 def NMEAencapsulate(BigString,sixes):
+    assert sixes == len(BigString)/6, "NMEAencapsulate: Bigstring is not the specified length."
     capsule = ''
     intChars = list(range(0,sixes))
     BitPositions = [5,4,3,2,1,0]
@@ -133,27 +151,27 @@ def NMEAencapsulate(BigString,sixes):
 def nmeaEncode(LineDict):
     AISlist = []
     Ignore = {'"'}
-    if LineDict["TYPE"] == "1":
+    if LineDict["type"] == "1":
         # This is a Class A position update message
-        cog = Str2Float(LineDict["COURSE"],Ignore)
-        mmsi = Str2Int(LineDict["MMSI"],Ignore)
-        lat = Str2Float(LineDict["LAT"],Ignore)
-        lon = Str2Float(LineDict["LON"],Ignore)
-        speed = Str2Float(LineDict["SPEED"],Ignore)
-        status = Str2Int(LineDict["STATUS"],Ignore)
-        heading = Str2Int(LineDict["HEADING"],Ignore)
-        rot = -128  # -128 means turn speed not available
-        if "ROT" in LineDict:
-            rot = Str2Int(LineDict["ROT"],Ignore)
-
-        tStamp = LineDict["TIMESTAMP"]
+        cog = Str2Float(Parse(LineDict,"COURSE","0"),Ignore)
+        mmsi = Str2Int(Parse(LineDict,"MMSI","99999"),Ignore)
+        lat = Str2Float(Parse(LineDict,"LAT","0"),Ignore)
+        lon = Str2Float(Parse(LineDict,"LON","0"),Ignore)
+        speed = Str2Float(Parse(LineDict,"SPEED","0"),Ignore)
+        status = Str2Int(Parse(LineDict,"STATUS","0"),Ignore)
+        heading = Str2Int(Parse(LineDict,"HEADING","0"),Ignore)
+        rot = Str2Int(Parse(LineDict,"ROT","-128"),Ignore)
+        channel = Parse(LineDict,"CHANNEL","A")
+        now = dt.datetime.utcnow()
+        UTCnow = str(now.date())+'T'+str(now.hour)+':'+str(now.minute)+':'+str(now.second)
+        tStamp = Parse(LineDict,"TIMESTAMP",UTCnow)
         tSecond = Str2Int(tStamp[len(tStamp)-2:len(tStamp)],Ignore)
-        MessageID = Int2BString(Str2Int(LineDict["TYPE"],Ignore),6)
+        MessageID = Int2BString(Str2Int(Parse(LineDict,"TYPE","1"),Ignore),6)
         RepeatIndicator = Int2BString(3,2)
         UserID = Int2BString(mmsi,30)
         NavStatus = Int2BString(status,4)
-        RotAIS = Int2BString(rot,8)   # default is "not-available"
-        SOG = Int2BString(speed,10)    # We assume the speed in the data set is in 1/10 knot
+        RotAIS = Int2BString(rot,8)
+        SOG = Int2BString(speed,10)
         PosAccuracy = Int2BString(1,1)
         Longitude = Int2BString(int(lon*600000),28)
         Latitude = Int2BString(int(lat*600000),27)
@@ -182,33 +200,34 @@ def nmeaEncode(LineDict):
         BigString = BigString+RAIM
         BigString = BigString+CommStat
         capsule = NMEAencapsulate(BigString, 28)
-        AISlist.append('AIVDM,1,1,,A,'+ capsule + ',O')
+        AISlist.append('AIVDM,1,1,,' + channel + ','+ capsule + ',O')
 
-    if LineDict["TYPE"] == "5":
+    if LineDict["type"] == "5":
         # This is static and voyage related data
         MessageID = Int2BString(5,6)
-        RepeatIndicator = Int2BString(Str2Int(LineDict["REPEAT"],Ignore),2)
-        Channel = LineDict["CHANNEL"]
-        mmsi = Int2BString(Str2Int(LineDict["MMSI"],Ignore),30)
-        AISversion = Int2BString(0,2)
-        ImoNumber = Int2BString(Str2Int(LineDict["IMO_NUMBER"],Ignore),30)
-        CallSign = Str2Six(LineDict["CALL_SIGN"],42)
-        VesselName = Str2Six(LineDict["SHIP_NAME"],120)
-        ShipType = Int2BString(Str2Int(LineDict["SHIP_TYPE"],Ignore),8)
-        ToBow = Int2BString(Str2Int(LineDict["TO_BOW"],Ignore),9)
-        ToStern = Int2BString(Str2Int(LineDict["TO_STERN"],Ignore),9)
-        ToPort = Int2BString(Str2Int(LineDict["TO_PORT"],Ignore),6)
-        ToStbd = Int2BString(Str2Int(LineDict["TO_STBD"],Ignore),6)
-        FixType = Int2BString(Str2Int(LineDict["FIX_TYPE"],Ignore),4)
-        ETAmonth = Int2BString(Str2Int(LineDict["ETA_MONTH"],Ignore),4)
-        ETAday = Int2BString(Str2Int(LineDict["ETA_DAY"],Ignore),5)
-        ETAhour = Int2BString(Str2Int(LineDict["ETA_HOUR"],Ignore),5)
-        ETAmin = Int2BString(Str2Int(LineDict["ETA_MINUTE"],Ignore),6)
-        Draft = Int2BString(Str2Int(LineDict["DRAUGHT"],Ignore),8)
-        Dest = Str2Six(LineDict["DEST"],120)
+        RepeatIndicator = Int2BString(Str2Int(Parse(LineDict,"REPEAT","3"),Ignore),2)
+        Channel = Parse(LineDict,"CHANNEL","A")
+        mmsi = Int2BString(Str2Int(Parse(LineDict,"MMSI","99999"),Ignore),30)
+        AISversion = Int2BString(Str2Int(Parse(LineDict,"AISversion","0"),Ignore),2)
+        ImoNumber = Int2BString(Str2Int(Parse(LineDict,"IMO_NUMBER","9999"),Ignore),30)
+        CallSign = Str2Six(Parse(LineDict,"CALL_SIGN","CALL"),42)
+        VesselName = Str2Six(Parse(LineDict,"SHIP_NAME","SHIP_NAME"),120)
+        ShipType = Int2BString(Str2Int(Parse(LineDict,"SHIP_TYPE","0"),Ignore),8)
+        ToBow = Int2BString(Str2Int(Parse(LineDict,"TO_BOW","99"),Ignore),9)
+        ToStern = Int2BString(Str2Int(Parse(LineDict,"TO_STERN","99"),Ignore),9)
+        ToPort = Int2BString(Str2Int(Parse(LineDict,"TO_PORT","99"),Ignore),6)
+        ToStbd = Int2BString(Str2Int(Parse(LineDict,"TO_STBD","99"),Ignore),6)
+        FixType = Int2BString(Str2Int(Parse(LineDict,"FIX_TYPE","0"),Ignore),4)
+        ETAmonth = Int2BString(Str2Int(Parse(LineDict,"ETA_MONTH","1"),Ignore),4)
+        ETAday = Int2BString(Str2Int(Parse(LineDict,"ETA_DAY","1"),Ignore),5)
+        ETAhour = Int2BString(Str2Int(Parse(LineDict,"ETA_HOUR","0"),Ignore),5)
+        ETAmin = Int2BString(Str2Int(Parse(LineDict,"ETA_MINUTE","0"),Ignore),6)
+        Draft = Int2BString(Str2Int(Parse(LineDict,"DRAUGHT","99"),Ignore),8)
+        Dest = Str2Six(Parse(LineDict,"DEST","NONE"),120)
         Dte = Int2BString(0,1)
         Spare = Int2BString(0,1)
         Pad = Int2BString(0,2)
+
         BigString = MessageID
         BigString = BigString+RepeatIndicator
         BigString = BigString+mmsi
@@ -231,38 +250,41 @@ def nmeaEncode(LineDict):
         BigString = BigString+Dte
         BigString = BigString+Spare+Pad
 
+        assert len(BigString)==(71*6), "Oh no! Bigstring is not right."
+
         capsule = NMEAencapsulate(BigString[0:6*36],36)
         AISlist.append('AIVDM,2,1,' + str(seq5.counter) + ',' + Channel + ',' + capsule + ',O')
-        capsule = NMEAencapsulate(BigString[216:],35)
+        capsule = NMEAencapsulate(BigString[6*36:],35)
         AISlist.append('AIVDM,2,2,' + str(seq5.counter) + ',' + Channel + ',' + capsule + ',O')
         seq5()
 
-    if LineDict["TYPE"] == "18":
+    if LineDict["type"] == "18":
         # This is a Class B position update message
-        MessageID = Int2BString(Str2Int(LineDict["TYPE"],Ignore),6)
-        RepeatIndicator = Int2BString(0,2)
-        MMSI = Int2BString(Str2Int(LineDict["MMSI"],Ignore),30)
+        MessageID = Int2BString(Str2Int(Parse(LineDict,"TYPE","18"),Ignore),6)
+        RepeatIndicator = Int2BString(3,2)
+        MMSI = Int2BString(Str2Int(Parse(LineDict,"MMSI","99999"),Ignore),30)
         Spare1 = Int2BString(0,8)
-        Channel = LineDict["CHANNEL"]
+        Channel = Parse(LineDict,"CHANNEL","A")
 
-        sog = Str2Float(LineDict["SPEED"],Ignore)
+        sog = Str2Float(Parse(LineDict,"SPEED","0"),Ignore)
         SOG = Int2BString(sog,10)
 
         PosAccuracy = Int2BString(1,1)
 
-        lon = Str2Float(LineDict["LON"],Ignore)
+        lon = Str2Float(Parse(LineDict,"LON","0"),Ignore)
         Longitude = Int2BString(int(lon*600000),28)
 
-        lat = Str2Float(LineDict["LAT"],Ignore)
+        lat = Str2Float(Parse(LineDict,"LAT","0"),Ignore)
         Latitude = Int2BString(int(lat*600000),27)
 
-        cog = Str2Float(LineDict["COURSE"],Ignore)
+        cog = Str2Float(Parse(LineDict,"COURSE","0"),Ignore)
         COG = Int2BString(int(cog*10),12)
 
-        heading = Str2Int(LineDict["HEADING"],Ignore)
+        heading = Str2Int(Parse(LineDict,"HEADING","0"),Ignore)
         Heading = Int2BString(heading,9)
 
-        tStamp = LineDict["TIMESTAMP"]
+        now = dt.datetime.utcnow()
+        tStamp = Parse(LineDict,"TIMESTAMP",str(now.date())+'T'+str(now.hour)+':'+str(now.minute)+':'+str(now.second))
         tSecond = Str2Int(tStamp[len(tStamp)-2:len(tStamp)],Ignore)
         TimeStamp = Int2BString(tSecond,6)
 
@@ -278,27 +300,27 @@ def nmeaEncode(LineDict):
         capsule = NMEAencapsulate(BigString, 28)
         AISlist.append('AIVDM,1,1,,' + Channel +','+ capsule + ',O')
 
-    if LineDict["TYPE"] == "24":
+    if LineDict["type"] == "24":
         # This is a Class B Static Data Report
-        MessageID = Int2BString(Str2Int(LineDict["TYPE"],Ignore),6)
+        MessageID = Int2BString(24,6)
         RepeatIndicator = Int2BString(0,2)
-        MMSI = Int2BString(Str2Int(LineDict["MMSI"],Ignore),30)
-        part_no = Str2Int(LineDict["PART_NO"],Ignore)
+        MMSI = Int2BString(Str2Int(Parse(LineDict,"MMSI","9999"),Ignore),30)
+        part_no = Str2Int(LineDict["part_no"],Ignore)
         PartNumber = Int2BString(part_no,2)
-        Channel = LineDict["CHANNEL"]
+        Channel = Parse(LineDict,"CHANNEL","A")
         if part_no == 0:
-            Name = Str2Six(LineDict["SHIP_NAME"],120)
+            Name = Str2Six(Parse(LineDict,"SHIP_NAME","NAME"),120)
             Spare = Int2BString(0,8)
             BigString = MessageID+RepeatIndicator+MMSI+PartNumber+Name+Spare
             capsule = NMEAencapsulate(BigString, 28)
 
         if part_no == 1:
-            Type = Int2BString(Str2Int(LineDict["SHIP_TYPE"],Ignore),8)
+            ShipType = Int2BString(Str2Int(Parse(LineDict,"SHIP_TYPE","0"),Ignore),8)
             VendorID = Int2BString(0,42)
-            CallSign = Str2Six(LineDict["CALL_SIGN"],42)
+            CallSign = Str2Six(Parse(LineDict,"CALL_SIGN","CALL"),42)
             Dim = Int2BString(0,30)
             Spare = Int2BString(0,6)
-            BigString = MessageID+RepeatIndicator+MMSI+PartNumber+Type+VendorID+CallSign+Dim+Spare
+            BigString = MessageID+RepeatIndicator+MMSI+PartNumber+ShipType+VendorID+CallSign+Dim+Spare
             capsule = NMEAencapsulate(BigString, 28)
 
         AISlist.append('AIVDM,1,1,,' + Channel + ',' + capsule + ',O')
@@ -349,7 +371,7 @@ def parse_line(f):
             value = value + Chars
 
         if start & finish:
-            LineDict[key] = value
+            LineDict[key.lower()] = value
             keyFound = False
             key = ""
     return LineDict
@@ -390,9 +412,6 @@ def tcp(TCP_IP, TCP_PORT, f, delay):
         TCP_IP = socket.gethostname()
 
     server_address = (TCP_IP, TCP_PORT)
-
-#    print(['TCP target IP:%s:%d', server_address])
-#    print(['TCP target port:', str(TCP_PORT)])
     lsock = socket.socket(socket.AF_INET, # Internet
                           socket.SOCK_STREAM) # TCP
     lsock.settimeout(tcpConnectTimeout)
@@ -415,7 +434,6 @@ def tcp(TCP_IP, TCP_PORT, f, delay):
             LineDict = parse_line(f)
             if LineDict:
                 messageList = nmeaEncode(LineDict)
-	        #    print(mess)
                 for imess in range(0,messageList.count):
                     mess = messageList[imess].strip()
                     mess = mess + u"\r\n"
@@ -461,6 +479,7 @@ def seq5():
         seq5.counter = 0
 
 #  Execution begins...
+assert sys.version_info >= (3, 0), "Must run in Python 3"
 seq5.counter=0
 
 options, remainder = getopt.gnu_getopt(sys.argv[1:], 'hd:p:s:ut', ['help','dest=','port=','sleep=','UDP','TCP'])
@@ -479,26 +498,15 @@ for opt, arg in options:
     elif opt in ('-h', '--help'):
         usage()
         sys.exit()
+    else:
+        print("Unknown option: ", opt)
+        usage()
+        sys.exit()
 
 if remainder:
     file = open(remainder[0],'r')
 else:
     file = sys.stdin
-
-#if len(sys.argv) < 4:
-#    print(sys.argv)
-#    usage()
-#    sys.exit()
-
-#if len(sys.argv) > 4:
-#    td = float(sys.argv[4])
-#else:
-#    td = tdDefault        # default time between messages
-
-#if len(sys.argv) > 5:
-#    mode = sys.argv[5]
-#else:
-#    mode = "UDP"
 
 rCode = False
 
