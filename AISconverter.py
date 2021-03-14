@@ -11,7 +11,7 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#   Credits:
+#   Special thanks to these online resources:
 #   https://gpsd.gitlab.io/gpsd/NMEA.html
 #   https://gpsd.gitlab.io/gpsd/AIVDM.html
 #   https://opencpn.org

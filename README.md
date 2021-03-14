@@ -14,9 +14,20 @@ programs such as OpenCPN
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-## USAGE: python AISconverter.py InputFile --dest=IP_Address --port=Port# [--sleep=Sleep time [--TCP | --UDP]]
-    
-    Sleep time is the delay in seconds between AIS messages sent.
+   Special thanks to these online resources:
+   https://gpsd.gitlab.io/gpsd/NMEA.html
+   https://gpsd.gitlab.io/gpsd/AIVDM.html
+   https://opencpn.org
+
+   Consult these for more details about NMEA messages in general and
+   typical data contained in AIS messages.
+
+## USAGE:
+
+``` 
+   python AISconverter.py InputFile --dest=IP_Address --port=Port# [--sleep=Sleep time [--TCP | --UDP]]
+     
+   Sleep time is the delay in seconds between AIS messages sent.
     
     IP_Address is IP of destination for UDP mode. Default is 'localhost'
     
@@ -25,7 +36,8 @@ programs such as OpenCPN
     If three letter string after sleep time is TCP then TCP/IP packets are sent
     
     else UDP packets are sent.
-    
+```
+
 This program reads a plain text file containing key/value pairs and converts each line into a valid
 AIS NMEA-0183 message.  This is usefule if you have voyage related data in plain text format and wish
 to see that data displayed in a navigation program such as OpenCPN or any other program that can
