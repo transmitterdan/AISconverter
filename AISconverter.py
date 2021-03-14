@@ -204,6 +204,7 @@ def nmeaEncode(LineDict):
 
     if LineDict["type"] == "5":
         # This is static and voyage related data
+        seq5()
         MessageID = Int2BString(5,6)
         RepeatIndicator = Int2BString(Str2Int(Parse(LineDict,"REPEAT","3"),Ignore),2)
         Channel = Parse(LineDict,"CHANNEL","A")
@@ -256,7 +257,6 @@ def nmeaEncode(LineDict):
         AISlist.append('AIVDM,2,1,' + str(seq5.counter) + ',' + Channel + ',' + capsule + ',O')
         capsule = NMEAencapsulate(BigString[6*36:],35)
         AISlist.append('AIVDM,2,2,' + str(seq5.counter) + ',' + Channel + ',' + capsule + ',O')
-        seq5()
 
     if LineDict["type"] == "18":
         # This is a Class B position update message
@@ -476,7 +476,7 @@ def usage():
 def seq5():
     seq5.counter+=1
     if seq5.counter > 9:
-        seq5.counter = 0
+        seq5.counter = 1
 
 #  Execution begins...
 assert sys.version_info >= (3, 0), "Must run in Python 3"
