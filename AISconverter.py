@@ -142,14 +142,17 @@ def nmeaEncode(LineDict):
         speed = Str2Float(LineDict["SPEED"],Ignore)
         status = Str2Int(LineDict["STATUS"],Ignore)
         heading = Str2Int(LineDict["HEADING"],Ignore)
+        rot = -128  # -128 means turn speed not available
+        if "ROT" in LineDict:
+            rot = Str2Int(LineDict["ROT"],Ignore)
 
         tStamp = LineDict["TIMESTAMP"]
         tSecond = Str2Int(tStamp[len(tStamp)-2:len(tStamp)],Ignore)
         MessageID = Int2BString(Str2Int(LineDict["TYPE"],Ignore),6)
-        RepeatIndicator = Int2BString(0,2)
+        RepeatIndicator = Int2BString(3,2)
         UserID = Int2BString(mmsi,30)
         NavStatus = Int2BString(status,4)
-        RotAIS = Int2BString(-128,8)   # default is "not-available"
+        RotAIS = Int2BString(rot,8)   # default is "not-available"
         SOG = Int2BString(speed,10)    # We assume the speed in the data set is in 1/10 knot
         PosAccuracy = Int2BString(1,1)
         Longitude = Int2BString(int(lon*600000),28)
