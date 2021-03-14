@@ -15,11 +15,14 @@ programs such as OpenCPN
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
    Special thanks to these online resources:
-   https://gpsd.gitlab.io/gpsd/NMEA.html
-   https://gpsd.gitlab.io/gpsd/AIVDM.html
-   https://opencpn.org
 
-   Consult these for more details about NMEA messages in general and
+   <https://gpsd.gitlab.io/gpsd/NMEA.html>
+   
+   <https://gpsd.gitlab.io/gpsd/AIVDM.html>
+   
+   <https://opencpn.org>
+
+   Consult the links above for more details about NMEA messages in general and
    typical data contained in AIS messages.
 
 ## USAGE:
