@@ -42,7 +42,7 @@ programs such as OpenCPN
 ```
 
 This program reads a plain text file containing key/value pairs and converts each line into a valid
-AIS NMEA-0183 message.  This is usefule if you have voyage related data in plain text format and wish
+AIS NMEA-0183 message.  This is useful if you have voyage related data in plain text format and wish
 to see that data displayed in a navigation program such as OpenCPN or any other program that can
 display AIS ship data.  There are 4 types of AIS message this program understands.  Each type of message
 is encoded into the NMEA-0183 format and sent to a destination IP address as specified in the command
@@ -56,20 +56,20 @@ Each line of the file is made up of KEY="VALUE" pairs separated by spaces.  All 
 must appear on one line.  The key values are case insensitive.  So, for example, type="5" and TYPE="5" are
 equivalent.  If you include the same key more than once in a line only the last key/value pair is retained.
 
-Examples of each message types and required syntax:
+Examples of each message type and required syntax:
 
 NOTE: ALL TEXT IN A GIVEN MESSAGE MUST BE ON ONE LINE IN THE TEXT FILE!
-HERE WE DESCRIBE EACH FIELD ON A SINGLE LINE BUT THAT WILL NOT WORK IN THE TEXT FILE.
+HERE WE DESCRIBE EACH FIELD ON A SINGLE LINE AND GIVE A WORKING EXAMPE
+EACH VALID MESSAGE TYPE.
 
 Wherever possible, the program will provide a default value if a key/pair is missing.
-However, the default value may cause unexpected results in the receiving software.  Default
-values may cause unexpected problems.  For example, MMSI and IMO numbers must be unique for
-each vessel.  So using the default for these may destroy previous data with the same MMSI
-or IMO.
+However, values may cause unexpected problems.  For example, MMSI and IMO numbers must be unique for
+each vessel.  So using the default for these may destroy previous data with the same MMSI or IMO.
 
 ## Message descriptions
+
 ### Message Type 1:
-```
+
    TYPE="1", mandatory message type
    MMSI="367415981", optional - will default to 99999
    STATUS="5", optional - will default to 0
@@ -80,10 +80,12 @@ or IMO.
    HEADING="30", optional - will default to 0
    ROT="0", optional - will default to -128 (not available)
    TIMESTAMP="2021-11-19T05:19:47", optional - will default to computer UTC time
-```
 
-### Message Type 5:
 ```
+   TYPE="1" MMSI="367415981" STATUS="5" SPEED="0" LON="122.745400" LAT="27.135410" COURSE="113" HEADING="30" ROT="0" TIMESTAMP="2021-11-19T05:19:47"
+```
+### Message Type 5:
+
    TYPE="5", mandatory message type
    RepeatIndicator="3", optional - will default to "3" (do not repeat)
    Channel="A", optional AIS channel - will default to "A"
@@ -104,10 +106,13 @@ or IMO.
    ETAmin="30", optional - will default to "0"
    Draught="6", optional - will default to "99" (meters)
    Dest="SF BAY", optional - will default to "NONE"
-```
 
-### Message Type 18:
 ```
+TYPE="5" RepeatIndicator="3" Channel="A" MMSI="123446" AISversion="0" ImoNumber="45634" CallSign="WDE3241" VesselName="WIND WALKER" ShipType="0" ToBow="15" ToStern="15" ToPort="5" ToStbd="1" FixType="0" ETAmonth="6" ETAday="7" ETAhour="20" ETAmin="30" Draught="6" Dest="SF BAY"
+
+```
+### Message Type 18:
+
    TYPE="18", mandatory message type
    MMSI="367415980", optional - will default to "99999"
    SPEED="0", optional - will default to "0"
@@ -117,6 +122,9 @@ or IMO.
    HEADING="30", optional - will default to "0"
    CHANNEL="B", optional - will default to "A"
    TIMESTAMP="2021-11-19T05:19:47", optional - will default to computer UTC time
+
+```
+TYPE="18" MMSI="367415980" SPEED="0" LON="121.745400" LAT="24.135410" COURSE="113" HEADING="30" CHANNEL="B" TIMESTAMP="2021-11-19T05:19:47"
 ```
 
 NOTE: Message 24 has 2 sub-types known as "Parts". These should appear in the text file
@@ -124,20 +132,26 @@ in sequential lines.  The MMSI number tells us that the data belong to a common 
 Therefore, MMSI should be identical in each part for same vessel.
 
 ### Message Type 24 (first part):
-```
+
    TYPE="24", mandatory message type
    MMSI="367415980", optional - will default to "99999"
    PART_NO="0", mandatory
    CHANNEL="A", optional - will default to "A"
    SHIP_NAME="LOLLYPOP", - will default to "NAME"
-```
 
 ### Message Type 24 (second part):
-```
+
    TYPE="24", mandatory message type
    MMSI="367415980", optional - will default to "99999"
    PART_NO="1", mandatory
    CHANNEL="A", optional - will default to "A"
    SHIP_TYPE="8", optional - will default to "0"
    CALL_SIGN="WDE9000", optional - will default to "CALL"
+
 ```
+TYPE="24" MMSI="367415980" CHANNEL="A" SHIP_NAME="LOLLYPOP"
+TYPE="24" MMSI="367415980" PART_NO="1" CHANNEL="A" SHIP_TYPE="8" CALL_SIGN="WDE9000"
+```
+
+Use the https://github.com/transmitterdan/AISconverter/issues link to ask questions
+or report problems.
