@@ -2,25 +2,12 @@
 Convert data in a text file to NMEA-0183 AIS data usable by ECDIS display
 programs such as OpenCPN
 
-   This program is free software: you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation, either version 3 of the License, or
-   (at your option) any later version.
-   This program is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+This program reads a plain text file containing key/value pairs and converts each line into a validAIS NMEA-0183 message.  This is useful if you have voyage related data in plain text format and wish to see that data displayed in a navigation program such as OpenCPN or any other program that can display AIS ship data.  There are 4 types of AIS message this program understands.  Each type of message is encoded into the NMEA-0183 format and sent to a destination IP address as specified in the command line.
 
-   You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-   Special thanks to these online resources:
-
-   <https://gpsd.gitlab.io/gpsd/NMEA.html>
-   
-   <https://gpsd.gitlab.io/gpsd/AIVDM.html>
-   
-   <https://opencpn.org>
+* **Special thanks to these online resources:**
+   - <https://gpsd.gitlab.io/gpsd/NMEA.html>
+   - <https://gpsd.gitlab.io/gpsd/AIVDM.html>
+   - <https://opencpn.org>
 
    Consult the links above for more details about NMEA messages in general and
    typical data contained in AIS messages.
@@ -29,14 +16,13 @@ programs such as OpenCPN
 
 ``` 
    python AISconverter.py InputFile --dest=IP_Address --port=Port# [--sleep=Sleep time [--TCP | --UDP]]
- ```
-   - Sleep time is the delay in seconds between AIS messages sent.
-    
-   - IP_Address is IP of destination for UDP mode. Default is 'localhost'
-    
-   - Sleep time defaults to 0.1 seconds. If three letter string after sleep time is TCP then TCP/IP packets are sent else UDP packets are sent.
+```
+   - IP_Address is the destination IP address for UDP connections.  For TCP connections the IP_Address is the address you wish the server to use.  Most commonly the server will be localhost or the URL of the host machine.  Clients will attempt to connect to this IP address.
 
-This program reads a plain text file containing key/value pairs and converts each line into a validAIS NMEA-0183 message.  This is useful if you have voyage related data in plain text format and wish to see that data displayed in a navigation program such as OpenCPN or any other program that can display AIS ship data.  There are 4 types of AIS message this program understands.  Each type of message is encoded into the NMEA-0183 format and sent to a destination IP address as specified in the command line.
+   - Port# is the port number you wish to use.  The client must use this same number to make a connection.
+   - Sleep time is the delay in seconds between AIS messages sent. Sleep time defaults to 0.1 seconds.
+   - TCP indicates the program should act as a server and await connection.  We only allow one connection at a time.
+   - UDP indicates the program will stream out messages to the specified IP address. No error is reported if the destination IP address is invalid or the messages to not make it to the destination.
 
 Each NMEA message is formed by reading one line of the input file (possibly from STDIN) and forming the designated NMEA text string.  Then the message is transmitted.  This repeats until the end of file is reached.
 
@@ -91,7 +77,6 @@ TYPE="1" MMSI="367415981" STATUS="5" SPEED="0" LON="122.745400" LAT="27.135410" 
 
 ```
 TYPE="5" RepeatIndicator="3" Channel="A" MMSI="123446" AISversion="0" ImoNumber="45634" CallSign="WDE3241" VesselName="WIND WALKER" ShipType="0" ToBow="15" ToStern="15" ToPort="5" ToStbd="1" FixType="0" ETAmonth="6" ETAday="7" ETAhour="20" ETAmin="30" Draught="6" Dest="SF BAY"
-
 ```
 ### Message Type 18:
 
