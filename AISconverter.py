@@ -56,7 +56,7 @@ import datetime as dt
 port = 10110    # Default port
 td = 0.1        # Default time between sent messages is 100mS
 mode = "UDP"    # Default mode is UDP
-dest = "localhost" # Default destination IP address
+dest = None     # Default destination IP address
 
 tcpTimeout = 5.0    # Timeout for inactive TCP socket
 tcpConnectTimeout = 60.0	# Wait 60 seconds for a connection then exit
@@ -93,7 +93,6 @@ def Str2Six (str, length):
     while len(result) < length:
         result = result + Int2BString(sixbitencoding['@'],6)
 
-    result = result[0:length]
     return result
 
 def Str2Str (str, exc):
@@ -109,7 +108,6 @@ def Int2BString (value, length):
         value = value//2
         index=index-1
 
-    result = result[0:length]
     return result
 
 def BString2Int(bitlist):  # convert reversed bit string to int
@@ -376,23 +374,34 @@ def parse_line(f):
             key = ""
     return LineDict
 
+def convertLine(f):
+    LineDict = parse_line(f)
+    if LineDict:
+        messageList = nmeaEncode(LineDict)
+        return messageList
+    else:
+        return False
+
 def udp(UDP_IP, UDP_PORT, f, delay):
+    if UDP_IP == None:
+        UDP_IP = socket.gethostname()
+
     print(['UDP target IP:', UDP_IP])
     print(['UDP target port:', str(UDP_PORT)])
     sock = socket.socket(socket.AF_INET, # Internet
                          socket.SOCK_DGRAM) # UDP
     print("Type Ctrl-C to exit...")
-    while True :
+    while True:
         try:
-            LineDict = parse_line(f)
-            if LineDict:
-                messageList = nmeaEncode(LineDict)
-                if len(messageList) > 0:
-                    for imess in range(0,len(messageList)):
-                        mess = messageList[imess].strip()
-                        mess = mess + u"\r\n"
-                        sock.sendto(mess.encode("utf-8"),(UDP_IP, UDP_PORT))
-                        time.sleep(delay)
+            # Convert next line in file to NMEA message(s)
+            messageList = convertLine(f)
+            if messageList:
+                for imess in range(0,len(messageList)):
+                    mess = messageList[imess].strip()
+                    mess = mess + u"\r\n"
+                    sock.sendto(mess.encode("utf-8"),(UDP_IP, UDP_PORT))
+
+            time.sleep(delay)
 
         except KeyboardInterrupt:
             f.close()
@@ -431,14 +440,15 @@ def tcp(TCP_IP, TCP_PORT, f, delay):
     print("Type Ctrl-C to exit...")
     while True:
         try:
-            LineDict = parse_line(f)
-            if LineDict:
-                messageList = nmeaEncode(LineDict)
-                for imess in range(0,messageList.count):
+            # Convert next line in file to NMEA message(s)
+            messageList = convertLine(f)
+            if messageList:
+                for imess in range(0,len(messageList)):
                     mess = messageList[imess].strip()
                     mess = mess + u"\r\n"
                     conn.send(mess.encode("utf-8"))
-                    time.sleep(delay)
+
+            time.sleep(delay)
 
         except KeyboardInterrupt:
             f.close()
@@ -511,6 +521,9 @@ else:
 rCode = False
 
 if mode.upper() == "UDP":
+    if not dest:
+        dest = "localhost"
+
     rCode = udp(dest,port,file,td)
 
 if mode.upper() == "TCP":
