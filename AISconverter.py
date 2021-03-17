@@ -521,9 +521,6 @@ else:
 rCode = False
 
 if mode.upper() == "UDP":
-    if not dest:
-        dest = "localhost"
-
     rCode = udp(dest,port,file,td)
 
 if mode.upper() == "TCP":
